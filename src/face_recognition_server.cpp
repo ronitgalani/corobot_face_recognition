@@ -86,7 +86,7 @@ public:
     }
     
     // helper variables
-    ros::Rate r(1);
+    ros::Rate r(60);
     bool success = true;
 
     _goal_id = goal->order_id;
