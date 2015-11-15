@@ -21,6 +21,7 @@ public:
 	void readTrainingDb(std::string dbpath);
 	void trainModelsAndSave(bool trainAll=false);
 	void loadModels();
+	void train(std::string);
 	std::map<std::string, std::pair<std::string, double> > recognize(cv::Mat &frame, bool, bool, bool);
 
 private:
@@ -97,6 +98,13 @@ FaceRec::FaceRec(bool train, string preprocessing)
 
 FaceRec::~FaceRec() {
 	
+}
+
+void FaceRec::train(string preprocessing) {
+	_preprocessing = preprocessing;
+	readTrainingDb(face_database_path);
+	trainModelsAndSave(false);
+	loadModels();
 }
 
 int FaceRec::generateCsv() {
@@ -182,6 +190,20 @@ void FaceRec::readimgs(string dirpath, vector<Mat> &faceImgs,
 
 
 void FaceRec::readTrainingDb(string dbpath) {
+	ROS_INFO("Reading images from %s.", face_database_path.c_str());
+
+	_faceImgs.clear();
+	_faceLabels.clear();
+	_faceNames.clear();
+	_grayscaleFaceImgs.clear();
+	_grayscaleFaceLabels.clear();
+	_histeqFaceImgs.clear();
+	_histeqFaceLabels.clear();
+	_avg4FaceImgs.clear();
+	_avg4FaceLabels.clear();
+	_tantriggsFaceImgs.clear();
+	_tantriggsFaceLabels.clear();
+
 	int currentLabel = -1;
 
 	DIR* dir_point = opendir(dbpath.c_str());
@@ -193,8 +215,8 @@ void FaceRec::readTrainingDb(string dbpath) {
 		if (entry->d_type == DT_DIR) {
 			string sub_name = entry->d_name;
 			currentLabel++;
-			_faceNames[currentLabel] = sub_name;
 			if (sub_name != "." && sub_name != "..") {
+				_faceNames[currentLabel] = sub_name;
 				string sub_path = dbpath + "/" + sub_name;
 				DIR* sub_dir_point = opendir(sub_path.c_str());
 				dirent* sub_entry = readdir(sub_dir_point);
@@ -229,12 +251,24 @@ void FaceRec::readTrainingDb(string dbpath) {
 		}
 		entry = readdir(dir_point);
 	}
+
+	ROS_INFO("Reading images completed");
+
+	string subjectsList = "";
+	for (map<int,string>::iterator it=_faceNames.begin(); it!=_faceNames.end(); ++it){
+	    subjectsList += it->second;
+	    subjectsList += ", ";
+	}
+
+	ROS_INFO("%lu Subjects: %s", _faceNames.size(), subjectsList.c_str());
+
 	return;
 }
 
 
 void FaceRec::trainModelsAndSave(bool trainAll) {
-
+	ROS_INFO("Training started.");
+	
 	if (trainAll || _preprocessing == "grayscale") {
 		_eigenfacesModel->train(_grayscaleFaceImgs, _grayscaleFaceLabels);
 		_fisherfacesModel->train(_grayscaleFaceImgs, _grayscaleFaceLabels);
@@ -274,6 +308,7 @@ void FaceRec::trainModelsAndSave(bool trainAll) {
 		_fisherfacesModel->save(fisherfacesTantriggsModel_file);
 		_lbphModel->save(lbphTantriggsModel_file);
 	}
+	ROS_INFO("Training complete.");
 
 }
 
